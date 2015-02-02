@@ -1,10 +1,12 @@
 module Node.FS where
 
 import Data.Null
+import Data.Object
 import Data.Function
 import Data.Function.Eff
 import Data.Function.Callback
-import Data.Object
+import Data.Function.Callback.Other
+import Control.Monad.Eff
 
 import Node.Buffer (Buffer())
 
@@ -83,10 +85,11 @@ fsrmdir      = runFnCb1 nativeFS.rmdir
 fsmkdir      = runFnCb2 nativeFS.mkdir
 fsreaddir    = runFnCb1 nativeFS.readdir
 fsutimes     = runFnCb3 nativeFS.utimes
+
 fsReadFile   = runFnCb2 nativeFS.readFile
 fsWriteFile  = runFnCb3 nativeFS.writeFile
 fsAppendFile = runFnCb3 nativeFS.appendFile
-fsexists     = runFnEff2 nativeFS.exists
+fsExists p cb = runFnEff2 nativeFS.exists p (asCb1 cb)
 
 fsopen      = runFnCb3 nativeFS.open
 fsftruncate = runFnCb2 nativeFS.ftruncate
@@ -142,7 +145,7 @@ foreign import nativeFS
   readFile   :: forall eff repr. FnCb2 (fs :: FS | eff) FilePath (N ReadFileOpts) repr,
   writeFile  :: forall eff repr. FnCb3 (fs :: FS | eff) DestPath repr (N WriteFileOpts) Unit,
   appendFile :: forall eff repr. FnCb3 (fs :: FS | eff) DestPath repr (N WriteFileOpts) Unit,
-  exists     :: forall eff. FnEff2 (fs :: FS | eff) FilePath (Fn1 Boolean Unit) Unit,
+  exists     :: forall eff. FnEff2 (fs :: FS | eff) FilePath (Cb1 Boolean) Unit,
   --
   open      :: forall eff. FnCb3 (fs :: FS | eff) FilePath FileFlags (N FileMode) FD,
   ftruncate :: forall eff. FnCb2 (fs :: FS | eff) FD ByteNum Unit,
