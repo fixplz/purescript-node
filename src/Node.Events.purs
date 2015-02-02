@@ -1,18 +1,16 @@
 module Node.Events
 (
   EventEmitter,
-  NativeEventEmitter,
+  EvEff(..),
+  EventListener(), asListener,
+  Event(..), event,
   onEv,
   onceEv,
   emitEv,
   removeListener,
   removeAllListeners,
   listeners,
-  EvEff(..),
-  Event,
-  ErrorEv(), errorEv,
-  EventListener(),
-  asListener
+  errorEv
 )
 where
 
@@ -22,45 +20,59 @@ import Data.Function.Eff
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Exception (Error())
 
+class EventEmitter emitter
+
+foreign import data Event :: * -> * -> *
+
+foreign import event
+  "function event(name) { return name }"
+  :: forall emitter val. String -> Event emitter val
+
 type EventListener val = Fn1 val Unit
+
+errorEv = event "error" :: forall emitter. Event emitter Error
 
 foreign import data EvEff :: !
 
-class EventEmitter emitter where
-  onEv :: forall eff ev evval. (Event emitter ev evval) =>
-    emitter -> ev -> EventListener evval -> Eff (ev :: EvEff | eff) Unit
-  onceEv :: forall eff ev evval. (Event emitter ev evval) =>
-    emitter -> ev -> EventListener evval -> Eff (ev :: EvEff | eff) Unit
-  emitEv :: forall eff ev evval. (Event emitter ev evval) =>
-    emitter -> ev -> evval -> Eff (ev :: EvEff | eff) Boolean
-  removeListener :: forall eff ev evval. (Event emitter ev evval) =>
-    emitter -> ev -> EventListener evval -> Eff (ev :: EvEff | eff) Unit
-  removeAllListeners :: forall eff ev evval. (Event emitter ev evval) =>
-    emitter -> ev -> Eff (ev :: EvEff | eff) Unit
-  listeners :: forall eff ev evval. (Event emitter ev evval) =>
-    emitter -> ev -> Eff (ev :: EvEff | eff) [EventListener evval]
+onEv ::
+  forall eff emitter evval. (EventEmitter emitter) =>
+    emitter -> Event emitter evval -> EventListener evval -> Eff (ev :: EvEff | eff) Unit
 
-class Event emitter event eventValue
+onEv = runMethodEff2 "on"
 
-foreign import data ErrorEv :: *
-foreign import errorEv "var errorEv = 'error'" :: ErrorEv
+onceEv ::
+  forall eff emitter evval. (EventEmitter emitter) =>
+    emitter -> Event emitter evval -> EventListener evval -> Eff (ev :: EvEff | eff) Unit
 
-instance emitterErrorEv :: (EventEmitter emitter) => Event emitter ErrorEv Error
+onceEv = runMethodEff2 "once"
+
+emitEv ::
+  forall eff emitter evval. (EventEmitter emitter) =>
+    emitter -> Event emitter evval -> evval -> Eff (ev :: EvEff | eff) Boolean
+
+emitEv = runMethodEff2 "emit"
+
+removeListener ::
+  forall eff emitter evval. (EventEmitter emitter) =>
+    emitter -> Event emitter evval -> EventListener evval -> Eff (ev :: EvEff | eff) Unit
+
+removeListener = runMethodEff2 "removeListener"
+
+removeAllListeners ::
+  forall eff emitter evval. (EventEmitter emitter) =>
+    emitter -> Event emitter evval -> Eff (ev :: EvEff | eff) Unit
+
+removeAllListeners = runMethodEff1 "removeAllListeners"
+
+listeners ::
+  forall eff emitter evval. (EventEmitter emitter) =>
+    emitter -> Event emitter evval -> Eff (ev :: EvEff | eff) [EventListener evval]
+
+listeners = runMethodEff1 "listeners"
 
 asListener :: forall val eff. (val -> Eff eff Unit) -> EventListener val
 asListener cb = mkFn1 \val -> runEff (cb val)
 
-foreign import runEff """function runEff(eff) { return eff() }"""
+foreign import runEff
+  "function runEff(eff) { return eff() }"
   :: forall eff val. Eff eff val -> val
-
--- 
-
-class NativeEventEmitter emitter
-
-instance nativeEventEmitter :: (NativeEventEmitter emitter) => EventEmitter emitter where
-  onEv = runMethod2 "on"
-  onceEv = runMethod2 "once"
-  emitEv = runMethod2 "emit"
-  removeListener = runMethod2 "removeListener"
-  removeAllListeners = runMethod1 "removeAllListeners"
-  listeners = runMethod1 "listeners"

@@ -8,6 +8,9 @@ import Data.Object
 
 import Node.Buffer (Buffer())
 
+import Node.Stream.Char
+import Node.Events
+
 foreign import data FS :: !
 
 type FilePath = String
@@ -36,6 +39,16 @@ type WriteFileOpts = {
   flag     :: N FileFlags,
   mode     :: N FileMode
 }
+
+type ReadStreamOpts = {
+  encoding  :: N String,
+  flag      :: N FileFlags,
+  fd        :: N FD,
+  mode      :: N FileMode,
+  autoClose :: N Boolean
+}
+
+type WriteStreamOpts = WriteFileOpts
 
 type FileStats = {
   dev     :: Number,
@@ -86,6 +99,9 @@ fsfsync     = runFnCb1 nativeFS.fsync
 fswrite     = runFnCb5 nativeFS.write
 fsread      = runFnCb5 nativeFS.read
 
+fsCreateReadStream = runFnEff2 nativeFS.createReadStream
+fsCreateWriteStream = runFnEff2 nativeFS.createWriteStream
+
 statsIs :: String -> FileStats -> Boolean
 statsIs = runMethod0
 
@@ -96,6 +112,12 @@ statsIsCharacterDevice = statsIs "isCharacterDevice"
 statsIsSymbolicLink    = statsIs "isSymbolicLink"
 statsIsFIFO            = statsIs "isFIFO"
 statsIsSocket          = statsIs "isSocket"
+
+foreign import data FSReadStream :: * -> *
+foreign import data FSWriteStream :: * -> *
+
+instance fsReadStream :: ReadStreamChar (FSReadStream chars) chars
+instance fsWriteStream :: WriteStreamChar (FSWriteStream chars) chars
 
 foreign import nativeFS
   """var nativeFS = require('fs')"""
@@ -132,6 +154,9 @@ foreign import nativeFS
   fsync     :: forall eff. FnCb1 (fs :: FS | eff) FD Unit,
   write     :: forall eff. FnCb5 (fs :: FS | eff) FD Buffer BufferOffset BufferLength FDPosition ByteNum,
   read      :: forall eff. FnCb5 (fs :: FS | eff) FD Buffer BufferOffset BufferLength FDPosition ByteNum,
+  --
+  createReadStream :: forall eff. FnEff2 (fs :: FS | eff) FilePath (N ReadStreamOpts) (FSReadStream Buffer),
+  createWriteStream :: forall eff. FnEff2 (fs :: FS | eff) FilePath (N WriteStreamOpts) (FSWriteStream Buffer),
   --
   renameSync     :: forall eff. FnEff2 (fs :: FS | eff) FilePath DestPath Unit,
   truncateSync   :: forall eff. FnEff2 (fs :: FS | eff) FilePath ByteNum Unit,
