@@ -68,6 +68,11 @@ type FileStats = {
   ctime   :: Number
 }
 
+type FileWatchOpts = {
+  persistent :: N Boolean,
+  interval :: N Number
+}
+
 fsrename     = runFnCb2 nativeFS.rename
 fstruncate   = runFnCb2 nativeFS.truncate
 fschown      = runFnCb3 nativeFS.chown
@@ -105,6 +110,8 @@ fsread      = runFnCb5 nativeFS.read
 fsCreateReadStream = runFnEff2 nativeFS.createReadStream
 fsCreateWriteStream = runFnEff2 nativeFS.createWriteStream
 
+fsWatch = runFnEff2 nativeFS.watch
+
 statsIs :: String -> FileStats -> Boolean
 statsIs = runMethod0
 
@@ -121,6 +128,14 @@ foreign import data FSWriteStream :: * -> # ! -> *
 
 instance fsReadStream :: ReadStreamChar (FSReadStream chars) chars
 instance fsWriteStream :: WriteStreamChar (FSWriteStream chars) chars
+
+foreign import data FSWatcher :: # ! -> *
+instance fsWatcherEmitter :: EventEmitter FSWatcher
+
+changeEv = event "change" :: Event FSWatcher String
+
+fsCloseWatcher :: forall eff. FSWatcher eff -> Eff (fs :: FS | eff) Unit
+fsCloseWatcher = runMethodEff0 "close"
 
 foreign import nativeFS
   """var nativeFS = require('fs')"""
@@ -160,6 +175,10 @@ foreign import nativeFS
   --
   createReadStream :: forall eff repr. FnEff2 (fs :: FS | eff) FilePath (N ReadStreamOpts) (FSReadStream repr eff),
   createWriteStream :: forall eff repr. FnEff2 (fs :: FS | eff) FilePath (N WriteStreamOpts) (FSWriteStream repr eff),
+  --
+  watch :: forall eff. FnEff2 (fs :: FS | eff) FilePath FileWatchOpts (FSWatcher eff),
+  watchFile :: forall eff. FnEff3 (fs :: FS | eff) FilePath FileWatchOpts (Cb2 FileTime FileTime) Unit,
+  unwatchFile :: forall eff. FnEff3 (fs :: FS | eff) FilePath FileWatchOpts (Cb2 FileTime FileTime) Unit,
   --
   renameSync     :: forall eff. FnEff2 (fs :: FS | eff) FilePath DestPath Unit,
   truncateSync   :: forall eff. FnEff2 (fs :: FS | eff) FilePath ByteNum Unit,
