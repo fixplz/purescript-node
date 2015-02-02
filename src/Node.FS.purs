@@ -113,8 +113,8 @@ statsIsSymbolicLink    = statsIs "isSymbolicLink"
 statsIsFIFO            = statsIs "isFIFO"
 statsIsSocket          = statsIs "isSocket"
 
-foreign import data FSReadStream :: * -> *
-foreign import data FSWriteStream :: * -> *
+foreign import data FSReadStream :: * -> # ! -> *
+foreign import data FSWriteStream :: * -> # ! -> *
 
 instance fsReadStream :: ReadStreamChar (FSReadStream chars) chars
 instance fsWriteStream :: WriteStreamChar (FSWriteStream chars) chars
@@ -155,8 +155,8 @@ foreign import nativeFS
   write     :: forall eff. FnCb5 (fs :: FS | eff) FD Buffer BufferOffset BufferLength FDPosition ByteNum,
   read      :: forall eff. FnCb5 (fs :: FS | eff) FD Buffer BufferOffset BufferLength FDPosition ByteNum,
   --
-  createReadStream :: forall eff. FnEff2 (fs :: FS | eff) FilePath (N ReadStreamOpts) (FSReadStream Buffer),
-  createWriteStream :: forall eff. FnEff2 (fs :: FS | eff) FilePath (N WriteStreamOpts) (FSWriteStream Buffer),
+  createReadStream :: forall eff repr. FnEff2 (fs :: FS | eff) FilePath (N ReadStreamOpts) (FSReadStream repr eff),
+  createWriteStream :: forall eff repr. FnEff2 (fs :: FS | eff) FilePath (N WriteStreamOpts) (FSWriteStream repr eff),
   --
   renameSync     :: forall eff. FnEff2 (fs :: FS | eff) FilePath DestPath Unit,
   truncateSync   :: forall eff. FnEff2 (fs :: FS | eff) FilePath ByteNum Unit,
